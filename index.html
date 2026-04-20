@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RecruitAgent — 숨겨진 인재를 찾아 직접 소싱하는 HR Agent</title>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg0: #0E0E15;
+  --bg1: #141420;
+  --bg2: #1C1C2A;
+  --bg3: #22223A;
+  --purple: #3B82F6;
+  --purple-dim: rgba(59,130,246,.12);
+  --blue: #3B82F6;
+  --blue-deep: #1E40AF;
+  --blue-light: #60A5FA;
+  --teal: #10C8B4;
+  --red: #FF5858;
+  --white: #FFFFFF;
+  --gray: #909097;
+  --gray2: #52525E;
+  --green: #32D47A;
+  --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  /* Viewport-based responsive scale (unitless — must work with scale() + calc()).
+     Design canvas: 1440px. Scales discretely at breakpoints. */
+  --vw-scale: 1;
+}
+@media (max-width: 1280px) { :root { --vw-scale: .90; } }
+@media (max-width: 1024px) { :root { --vw-scale: .78; } }
+@media (min-width: 1680px) { :root { --vw-scale: 1.08; } }
+@media (min-width: 1920px) { :root { --vw-scale: 1.18; } }
+@media (min-width: 2400px) { :root { --vw-scale: 1.25; } }
+html { scroll-behavior: smooth; }
+body { background: var(--bg0); color: var(--white); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+
+/* ── UTILS ── */
+.container { max-width: 1200px; margin: 0 auto; padding: 0 120px; }
+.label { font-size: 12px; font-weight: 600; letter-spacing: 3px; color: var(--purple); text-transform: uppercase; }
+.reveal { opacity: 0; transform: translateY(48px); transition: opacity .9s cubic-bezier(.2,.75,.25,1), transform .9s cubic-bezier(.2,.75,.25,1); }
+.reveal.visible { opacity: 1; transform: none; }
+/* Pain Hire button — dramatic scale+rotate entry */
+.pain-hire-stage.reveal {
+  opacity: 0;
+  transform: translateX(var(--tx)) rotate(-14deg) scale(calc(0.82 * var(--vw-scale)));
+  transition: opacity 1.1s cubic-bezier(.18,.89,.32,1.15), transform 1.1s cubic-bezier(.18,.89,.32,1.15);
+}
+.pain-hire-stage.reveal.visible {
+  opacity: .55;
+  transform: translateX(var(--tx)) rotate(-4deg) scale(var(--vw-scale));
+}
+/* Pain cards — slide+scale stagger, appearing right after Hire (~0.55s in) */
+.pain-item.reveal { transform: translateY(70px) scale(.96); transition-delay: .55s; }
+.pain-item.reveal.visible { transform: none; }
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 68px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 120px;
+  background: rgba(14,14,21,.8); backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.nav-logo { font-size: 18px; font-weight: 800; color: var(--white); text-decoration: none; }
+.nav-logo span { color: var(--purple); }
+.nav-btn {
+  background: var(--purple); color: #fff; font-weight: 600; font-size: 14px;
+  padding: 10px 22px; border-radius: 8px; border: none; cursor: pointer;
+  text-decoration: none; transition: opacity .2s, transform .2s;
+}
+.nav-btn:hover { opacity: .88; transform: translateY(-1px); }
+
+/* ── HERO ── */
+.hero {
+  height: calc(1000px * var(--vw-scale));
+  display: flex; flex-direction: column; justify-content: flex-start; align-items: center;
+  text-align: center;
+  padding: calc(400px * var(--vw-scale)) 120px 60px;
+  position: relative; overflow: hidden;
+}
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none; z-index: 0;
+}
+.hero-glow {
+  position: absolute; width: 1100px; height: 700px; top: 20%; left: 50%;
+  transform: translate(-50%, -60%);
+  background: radial-gradient(ellipse, rgba(108,99,255,.28) 0%, rgba(59,130,246,.12) 40%, transparent 75%);
+  pointer-events: none; z-index: 0;
+}
+
+/* 3D Icon Band — fixed 1440 design canvas, centered and scaled with viewport */
+.hero-iso-band {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  width: 1440px;
+  height: 520px;
+  transform: translateX(-50%) scale(var(--vw-scale));
+  transform-origin: center top;
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
+}
+
+/* Glass badges */
+.glass-badge {
+  position: absolute;
+  width: 240px; height: 220px;
+  left: var(--x, 0); top: var(--y, 0);
+  transform: scale(var(--s, 1)) rotate(var(--r, 0deg));
+  filter: drop-shadow(0 28px 55px rgba(6,6,28,.72));
+  animation: floatY var(--fd, 5s) ease-in-out infinite;
+  animation-delay: var(--dl, 0s);
+  z-index: 5;
+}
+.glass-badge .depth, .glass-badge .overlay {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none;
+}
+.glass-front {
+  position: absolute;
+  left: 30px; top: 30px;
+  width: 160px; height: 160px;
+  border-radius: 34px;
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.62) 0%,
+      rgba(255,255,255,.18) 30%,
+      rgba(255,255,255,0) 60%),
+    rgba(var(--rgb), .12);
+  border: 1.2px solid rgba(255,255,255,.55);
+  backdrop-filter: blur(10px) saturate(1.3) brightness(1.08);
+  -webkit-backdrop-filter: blur(10px) saturate(1.3) brightness(1.08);
+  box-shadow:
+    inset 1px 1px 0 rgba(255,255,255,.45),
+    inset -1px -1px 0 rgba(0,0,0,.12);
+}
+@keyframes floatY {
+  0%,100% { translate: 0 0; }
+  50%     { translate: 0 -12px; }
+}
+
+/* Magnifier — scans across icons in front with tension */
+.magnifier {
+  position: absolute;
+  width: 220px; height: 220px;
+  top: 0; left: 0;
+  pointer-events: none;
+  animation: magScan 11s cubic-bezier(.7, -.05, .3, 1.05) infinite;
+  filter: drop-shadow(6px 38px 52px rgba(6,6,28,.8));
+  z-index: 10;
+}
+.magnifier svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mag-lens {
+  /* Positioned to match SVG rim center (cx=160, cy=140 in viewBox -25 -15 380 380),
+     rendered in 220x220 container at scale 220/380=0.579 → center (107, 90), inner radius 38 */
+  position: absolute;
+  left: 69px;
+  top: 52px;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(59,130,246,.14);
+  border: 1.5px solid rgba(255,255,255,.55);
+  backdrop-filter: blur(10px) saturate(1.25);
+  -webkit-backdrop-filter: blur(10px) saturate(1.25);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.35),
+    inset 8px 8px 22px rgba(255,255,255,.22),
+    inset -6px -8px 16px rgba(0,20,80,.28);
+}
+
+/* Magnifier scans across each icon staying in FRONT — snappy tension feel */
+@keyframes magScan {
+  0%,100% { transform: translate(73px, 81px)   rotate(-14deg); }
+  7%      { transform: translate(73px, 81px)   rotate(6deg); }
+  15%     { transform: translate(293px, 41px)  rotate(-8deg); }
+  22%     { transform: translate(293px, 41px)  rotate(14deg); }
+  30%     { transform: translate(553px, 111px) rotate(-6deg); }
+  37%     { transform: translate(553px, 111px) rotate(20deg); }
+  45%     { transform: translate(773px, 36px)  rotate(-10deg); }
+  52%     { transform: translate(773px, 36px)  rotate(18deg); }
+  60%     { transform: translate(1013px, 96px) rotate(-12deg); }
+  67%     { transform: translate(1013px, 96px) rotate(8deg); }
+  75%     { transform: translate(1223px, 71px) rotate(-14deg); }
+  82%     { transform: translate(1223px, 71px) rotate(16deg); }
+  92%     { transform: translate(620px, 140px) rotate(0deg); }
+}
+
+.iso-fade {
+  position: absolute;
+  left: 0; right: 0;
+  top: 0; height: 520px;
+  background: linear-gradient(to bottom,
+    rgba(14,14,21,0) 0%,
+    rgba(14,14,21,0) 28%,
+    rgba(14,14,21,.22) 46%,
+    rgba(14,14,21,.55) 62%,
+    rgba(14,14,21,.82) 76%,
+    rgba(14,14,21,.96) 88%,
+    rgba(14,14,21,1) 100%);
+  pointer-events: none;
+  z-index: 20;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(108,99,255,.12); border: 1px solid rgba(108,99,255,.4);
+  color: var(--purple); font-size: 13px; font-weight: 500;
+  padding: 8px 20px; border-radius: 100px; margin-bottom: 36px;
+  position: relative; z-index: 3;
+}
+.hero h1, .hero-sub, .hero-ctas, .hero-stats { position: relative; z-index: 3; }
+.hero h1 {
+  font-size: 80px; font-weight: 900; line-height: 1.08; letter-spacing: -2px;
+  margin-bottom: 28px;
+}
+.hero h1 .accent { color: var(--purple); }
+.hero-sub {
+  font-size: 19px; line-height: 1.7; color: var(--gray); max-width: 680px;
+  margin: 0 auto 48px;
+}
+.hero-ctas { display: flex; gap: 14px; justify-content: center; margin-bottom: 72px; }
+.btn-primary {
+  background: var(--purple); color: #fff; font-weight: 600; font-size: 16px;
+  padding: 16px 32px; border-radius: 10px; border: none; cursor: pointer;
+  text-decoration: none; transition: all .2s;
+}
+.btn-primary:hover { background: #2563EB; transform: translateY(-2px); box-shadow: 0 8px 30px rgba(59,130,246,.35); }
+.btn-secondary {
+  background: transparent; color: var(--white); font-weight: 600; font-size: 16px;
+  padding: 16px 32px; border-radius: 10px; border: 1px solid var(--gray2);
+  cursor: pointer; text-decoration: none; transition: all .2s;
+}
+.btn-secondary:hover { border-color: var(--gray); transform: translateY(-2px); }
+.hero-stats {
+  width: 100%; max-width: 1200px; display: grid; grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid rgba(255,255,255,.08); padding-top: 40px;
+}
+.stat-item { text-align: center; padding: 8px 0; position: relative; }
+.stat-item:not(:last-child)::after {
+  content: ''; position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  height: 48px; width: 1px; background: rgba(255,255,255,.08);
+}
+.stat-num { font-size: 32px; font-weight: 800; color: var(--purple); display: block; }
+.stat-label { font-size: 13px; color: var(--gray); margin-top: 4px; }
+
+/* ── PAIN POINTS ── */
+.pain {
+  padding: 100px 0; background: var(--bg1); position: relative; overflow: hidden;
+}
+/* Bridge gradient at top — seamless continuity with hero */
+.pain::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 260px;
+  background: linear-gradient(to bottom,
+    #0E0E15 0%,
+    #111119 55%,
+    #141420 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+.pain .container { position: relative; z-index: 2; }
+
+/* 3D "Hire" button floating in background (reference-style) */
+.pain-hire-stage {
+  position: absolute;
+  top: calc(20px * var(--vw-scale));
+  left: 50%;
+  width: 648px; height: 545px;
+  pointer-events: none;
+  z-index: 0;
+  filter: drop-shadow(0 40px 80px rgba(10,26,90,.55));
+  transform-origin: top center;
+  /* Position anchor: 393px right of viewport center at base scale, proportionally on wider viewports.
+     opacity + transform (incl. translateX & scale) driven by .reveal class. */
+  --tx: calc(-50% + 393px * var(--vw-scale));
+}
+.pain-hire-svg {
+  width: 100%; height: 100%;
+  display: block;
+}
+.pain-hire-glow {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 55% 55%, rgba(59,130,246,.55) 0%, rgba(59,130,246,.2) 28%, transparent 60%);
+  filter: blur(24px);
+}
+.pain-hire-card {
+  position: absolute; inset: 40px;
+  border-radius: 32px;
+  background: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.08);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.pain-hire-btn {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 340px; height: 240px;
+  border-radius: 56px;
+  background: linear-gradient(135deg, #7FB6FF 0%, #3B82F6 45%, #1E40AF 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 94px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -4px;
+  text-shadow: 0 4px 14px rgba(0,10,60,.45);
+  transform-style: preserve-3d;
+  transform: translate(-50%, -50%) rotateX(20deg) rotateY(-24deg);
+  box-shadow:
+    0 50px 120px -10px rgba(59,130,246,.55),
+    0 70px 140px -20px rgba(0,0,0,.55),
+    0 10px 0 rgba(30,64,175,.95),
+    0 18px 0 rgba(15,35,100,.9),
+    0 26px 0 rgba(8,20,70,.85),
+    inset 0 5px 0 rgba(255,255,255,.45),
+    inset 0 -5px 0 rgba(0,0,0,.22),
+    inset 8px 0 0 rgba(255,255,255,.22),
+    inset -8px 0 0 rgba(0,0,0,.12);
+  animation: hireFloat 6s ease-in-out infinite;
+}
+.pain-hire-btn::before {
+  content: '';
+  position: absolute;
+  inset: 8px 8px auto 8px; height: 38%;
+  border-radius: 48px 48px 120px 120px / 48px 48px 40px 40px;
+  background: linear-gradient(180deg, rgba(255,255,255,.38) 0%, rgba(255,255,255,.05) 70%, transparent 100%);
+  pointer-events: none;
+}
+.pain-hire-btn::after {
+  content: '';
+  position: absolute;
+  left: 18%; top: 14%;
+  width: 30%; height: 12%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255,255,255,.55) 0%, transparent 70%);
+  transform: rotate(-18deg);
+  pointer-events: none;
+}
+@keyframes hireFloat {
+  0%,100% { transform: translate(-50%, -50%) rotateX(20deg) rotateY(-24deg) translateZ(0); }
+  50%     { transform: translate(-50%, -54%) rotateX(18deg) rotateY(-22deg) translateZ(10px); }
+}
+.pain-header { margin-bottom: calc(420px * var(--vw-scale)); position: relative; }
+.pain-header h2 { max-width: 560px; }
+.pain-header h2 { font-size: 46px; font-weight: 800; margin-top: 14px; }
+
+/* Pain header stays visible; only h2 animates center → top-left on scroll reveal */
+.pain-header.reveal {
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
+}
+.pain-header h2 {
+  display: inline-block;
+  transform-origin: center center;
+  transition: transform 1.3s cubic-bezier(.25,.8,.3,1);
+  will-change: transform;
+}
+/* Initial: h2 at upper center (slight Y offset), font ~71px (a bit smaller than hero h1 80px) */
+.pain-header.reveal h2 {
+  transform: translate(calc(480px - 50%), 10vh) scale(1.55);
+}
+.pain-header.reveal.visible h2 {
+  transform: none;
+}
+.pain-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.pain-item {
+  padding: 48px 40px 48px 0;
+  position: relative;
+}
+.pain-item:not(:last-child)::after {
+  content: ''; position: absolute; right: 0; top: 0; bottom: 0;
+  width: 1px; background: rgba(255,255,255,.08);
+}
+.pain-item:not(:first-child) { padding-left: 48px; padding-right: 0; }
+.pain-item:nth-child(2) { padding-left: 48px; padding-right: 48px; }
+.pain-bg-num {
+  font-size: 120px; font-weight: 900; line-height: 1;
+  position: absolute; top: 28px; left: 0; opacity: .05;
+  pointer-events: none; user-select: none;
+}
+.pain-item:not(:first-child) .pain-bg-num { left: 48px; }
+.pain-accent { height: 4px; width: 44px; border-radius: 2px; margin-bottom: 20px; }
+.pain-num { font-size: 54px; font-weight: 900; line-height: 1; margin-bottom: 14px; }
+.pain-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+.pain-desc { font-size: 14px; line-height: 1.75; color: var(--gray); }
+
+/* ── SOLUTION ── */
+.solution { padding: 100px 0; background: var(--bg0); }
+.solution-header { margin-bottom: 56px; }
+.solution-header h2 { font-size: 46px; font-weight: 800; margin-top: 14px; }
+.solution-sub { font-size: 17px; color: var(--gray); margin-top: 12px; max-width: 800px; line-height: 1.7; }
+.solution-grid {
+  display: grid; grid-template-columns: 1.1fr .9fr; grid-template-rows: 1fr 1fr;
+  gap: 20px;
+  min-height: 640px;
+  align-items: stretch;
+}
+.sol-card {
+  background: var(--bg2); border-radius: 20px; padding: 36px; overflow: hidden;
+  position: relative; border: 1px solid rgba(255,255,255,.07);
+  transition: border-color .3s, transform .3s;
+  display: flex; flex-direction: column; justify-content: flex-start;
+}
+.sol-card:hover { transform: translateY(-3px); }
+.sol-featured {
+  grid-row: 1 / 3;
+  border-color: rgba(108,99,255,.35);
+}
+.sol-featured:hover { border-color: rgba(108,99,255,.55); }
+.sol-featured::before {
+  content: ''; position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+  width: 400px; height: 300px;
+  background: radial-gradient(ellipse, rgba(108,99,255,.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+.sol-tag {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border-radius: 10px;
+  font-size: 14px; font-weight: 700; margin-bottom: 20px;
+}
+.sol-top-bar { position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: 20px 20px 0 0; }
+.sol-title { font-size: 24px; font-weight: 800; margin: 0 0 8px; }
+.sol-subtitle { font-size: 13px; font-weight: 500; margin: 0 0 18px; }
+.sol-desc { font-size: 14px; color: var(--gray); line-height: 1.75; margin: 0 0 24px; }
+.sol-feats { display: flex; flex-direction: column; gap: 10px; }
+.sol-feat { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--gray); }
+/* dot rendered via inline span in each sol-feat */
+
+/* Candidate mock-ui */
+.mock-ui {
+  background: rgba(10,10,18,.6); border-radius: 14px; padding: 18px 20px;
+  margin: 20px 0; border: 1px solid rgba(255,255,255,.06);
+}
+.mock-row {
+  display: flex; align-items: center; gap: 14px; padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.mock-row:last-child { border-bottom: none; }
+.mock-avatar {
+  width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700; color: #fff;
+  letter-spacing: -.3px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.35);
+}
+.mock-info { flex: 1; min-width: 0; }
+.mock-name {
+  font-size: 15px; font-weight: 600; color: var(--white);
+  line-height: 1.3; margin-bottom: 3px;
+}
+.mock-role {
+  font-size: 12px; color: var(--gray);
+  line-height: 1.4; margin-bottom: 3px;
+}
+.mock-signal {
+  font-size: 11px; font-weight: 500; color: var(--blue-light);
+  line-height: 1.4;
+}
+.mock-badge {
+  font-size: 13px; font-weight: 700; color: var(--blue-light);
+  background: rgba(59,130,246,.18);
+  border: 1px solid rgba(59,130,246,.32);
+  padding: 6px 12px; border-radius: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.sol-sources { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
+.sol-source {
+  font-size: 11px; font-weight: 600; color: var(--purple);
+  background: rgba(108,99,255,.12); padding: 5px 12px; border-radius: 100px;
+}
+
+.sol-side { }
+.sol-side .sol-feats { margin-top: 16px; }
+.sol-side .sol-title { font-size: 20px; }
+.sol-side .sol-desc { font-size: 13px; }
+
+/* ── WORKFLOW ── */
+.workflow { padding: 100px 0; background: var(--bg1); }
+.workflow-header { margin-bottom: 80px; }
+.workflow-header h2 { font-size: 46px; font-weight: 800; margin-top: 14px; }
+.timeline {
+  position: relative; display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+.timeline::before {
+  content: ''; position: absolute;
+  left: calc(100% / 8); right: calc(100% / 8);
+  top: 93px; height: 2px;
+  background: linear-gradient(90deg, var(--purple) 0%, rgba(59,130,246,.2) 100%);
+  z-index: 0;
+}
+.step { text-align: center; padding: 0 20px; position: relative; }
+.step-bg-num {
+  font-size: 100px; font-weight: 900; color: var(--purple); opacity: .06;
+  line-height: 1; margin-bottom: -20px; user-select: none;
+}
+.step-node {
+  width: 28px; height: 28px; border-radius: 50%; background: var(--purple);
+  margin: 0 auto 28px; position: relative; z-index: 1;
+  box-shadow: 0 0 0 6px rgba(108,99,255,.15), 0 0 20px rgba(108,99,255,.4);
+}
+.step-node::after {
+  content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: 12px; height: 12px; border-radius: 50%; background: #fff;
+}
+.step-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+.step-desc { font-size: 13px; color: var(--gray); line-height: 1.75; }
+
+/* ── PRICING ── */
+.pricing { padding: 100px 0; background: var(--bg0); }
+.pricing-header { margin-bottom: 16px; }
+.pricing-header h2 { font-size: 46px; font-weight: 800; margin-top: 14px; }
+.pricing-sub { font-size: 16px; color: var(--gray); margin-top: 12px; margin-bottom: 56px; }
+.pricing-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+.plan {
+  background: var(--bg2); border-radius: 20px; padding: 36px;
+  border: 1px solid rgba(255,255,255,.07); position: relative;
+  transition: transform .3s, border-color .3s;
+}
+.plan:hover { transform: translateY(-4px); }
+.plan-featured {
+  background: var(--purple); border-color: transparent;
+}
+.plan-featured:hover { border-color: transparent; }
+.plan-rec {
+  position: absolute; top: 28px; right: 28px;
+  background: rgba(255,255,255,.2); color: #fff; font-size: 12px; font-weight: 600;
+  padding: 4px 14px; border-radius: 100px;
+}
+.plan-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.plan-target { font-size: 13px; color: var(--gray); margin-bottom: 24px; }
+.plan-featured .plan-target { color: rgba(255,255,255,.65); }
+.plan-divider { height: 1px; background: rgba(255,255,255,.12); margin-bottom: 24px; }
+.plan-price { font-size: 42px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+.plan-unit { font-size: 13px; color: var(--gray); margin-bottom: 32px; }
+.plan-featured .plan-unit { color: rgba(255,255,255,.65); }
+.plan-feats { display: flex; flex-direction: column; gap: 14px; }
+.plan-feat { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--gray); }
+.plan-featured .plan-feat { color: rgba(255,255,255,.88); }
+.plan-check { color: var(--green); font-weight: 700; flex-shrink: 0; }
+.plan-featured .plan-check { color: #fff; }
+
+/* ── CTA ── */
+.cta-section {
+  padding: 120px 0; background: linear-gradient(135deg, #1A1240 0%, var(--bg0) 60%);
+  text-align: center; position: relative; overflow: hidden;
+}
+.cta-section::before {
+  content: ''; position: absolute; top: -100px; left: 50%; transform: translateX(-50%);
+  width: 700px; height: 400px;
+  background: radial-gradient(ellipse, rgba(108,99,255,.2) 0%, transparent 65%);
+}
+.cta-section h2 { font-size: 56px; font-weight: 900; margin-bottom: 20px; }
+.cta-section p { font-size: 18px; color: var(--gray); margin-bottom: 44px; }
+.btn-white {
+  background: #fff; color: var(--purple); font-weight: 700; font-size: 16px;
+  padding: 18px 40px; border-radius: 12px; border: none; cursor: pointer;
+  text-decoration: none; transition: all .2s; display: inline-block;
+}
+.btn-white:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg0); }
+::-webkit-scrollbar-thumb { background: var(--gray2); border-radius: 3px; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from { opacity:0; transform:translateY(32px); } to { opacity:1; transform:none; } }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 6px rgba(108,99,255,.15), 0 0 20px rgba(108,99,255,.4); } 50% { box-shadow: 0 0 0 10px rgba(108,99,255,.08), 0 0 32px rgba(108,99,255,.6); } }
+.step-node { animation: pulse 2.5s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#"><span>Recruit</span>Agent</a>
+  <a class="nav-btn" href="#">무료 체험 시작</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+
+  <div class="hero-iso-band">
+    <!-- LinkedIn glass badge -->
+    <div class="glass-badge" style="--x:60px; --y:60px; --s:.95; --r:-6deg; --fd:5s; --dl:0s; --rgb:59,130,246;">
+      <svg class="depth" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(-1.7,1.15)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#3B82F6"/></g>
+        <g transform="translate(-3.4,2.3)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#387BEF"/></g>
+        <g transform="translate(-5.1,3.45)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#3676E9"/></g>
+        <g transform="translate(-6.8,4.6)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#3371E4"/></g>
+        <g transform="translate(-8.5,5.75)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#316CDE"/></g>
+        <g transform="translate(-10.2,6.9)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#2F66D8"/></g>
+      </svg>
+      <div class="glass-front"></div>
+      <svg class="overlay" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="linBev" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="30%" stop-color="#fff" stop-opacity=".65"/>
+            <stop offset="65%" stop-color="#fff" stop-opacity=".05"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="linFres" x1="100%" y1="100%" x2="25%" y2="25%">
+            <stop offset="0%" stop-color="#93C5FD" stop-opacity=".85"/>
+            <stop offset="45%" stop-color="#93C5FD" stop-opacity=".18"/>
+            <stop offset="100%" stop-color="#93C5FD" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#linBev)" stroke-width="3"/>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#linFres)" stroke-width="2"/>
+        <rect x="34" y="34" width="152" height="152" rx="30" fill="none" stroke="#fff" stroke-width=".8" stroke-opacity=".35"/>
+        <circle cx="74" cy="76" r="14" fill="#fff"/>
+        <rect x="61" y="98" width="26" height="72" fill="#fff"/>
+        <path d="M 103 98 L 103 170 L 129 170 L 129 130 Q 129 120 139 120 Q 149 120 149 130 L 149 170 L 175 170 L 175 126 Q 175 102 155 98 Q 135 96 129 110 L 129 98 Z" fill="#fff"/>
+      </svg>
+    </div>
+
+    <!-- GitHub glass badge -->
+    <div class="glass-badge" style="--x:280px; --y:20px; --s:1.2; --r:5deg; --fd:5.5s; --dl:.6s; --rgb:75,85,99;">
+      <svg class="depth" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(-1.7,1.15)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#4B5563"/></g>
+        <g transform="translate(-3.4,2.3)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#454F5D"/></g>
+        <g transform="translate(-5.1,3.45)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#404A58"/></g>
+        <g transform="translate(-6.8,4.6)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#3B4553"/></g>
+        <g transform="translate(-8.5,5.75)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#36404E"/></g>
+        <g transform="translate(-10.2,6.9)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#323B49"/></g>
+      </svg>
+      <div class="glass-front"></div>
+      <svg class="overlay" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="ghBev" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="30%" stop-color="#fff" stop-opacity=".65"/>
+            <stop offset="65%" stop-color="#fff" stop-opacity=".05"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="ghFres" x1="100%" y1="100%" x2="25%" y2="25%">
+            <stop offset="0%" stop-color="#CBD5E1" stop-opacity=".85"/>
+            <stop offset="45%" stop-color="#CBD5E1" stop-opacity=".18"/>
+            <stop offset="100%" stop-color="#CBD5E1" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#ghBev)" stroke-width="3"/>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#ghFres)" stroke-width="2"/>
+        <rect x="34" y="34" width="152" height="152" rx="30" fill="none" stroke="#fff" stroke-width=".8" stroke-opacity=".35"/>
+        <path d="M 110 54 C 75 54 50 80 50 114 C 50 141 68 164 94 171 C 97 172 98 170 98 169 L 98 158 C 82 161 78 151 78 151 C 76 146 72 144 72 144 C 67 141 73 141 73 141 C 79 142 82 148 82 148 C 87 156 95 154 98 152 C 99 148 101 145 103 144 C 89 142 74 137 74 114 C 74 108 76 103 80 99 C 79 97 77 92 80 85 C 80 85 86 83 98 91 C 103 90 109 89 114 89 C 120 89 125 90 131 91 C 143 83 148 85 148 85 C 151 92 149 97 148 99 C 152 103 154 108 154 114 C 154 137 139 142 125 144 C 127 146 129 150 129 155 L 129 169 C 129 170 131 172 134 171 C 160 164 178 141 178 114 C 178 80 153 54 110 54 Z" fill="#fff"/>
+      </svg>
+    </div>
+
+    <!-- YouTube glass badge -->
+    <div class="glass-badge" style="--x:540px; --y:90px; --s:.95; --r:-3deg; --fd:5.2s; --dl:1.2s; --rgb:239,68,68;">
+      <svg class="depth" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(-1.7,1.15)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#EF4444"/></g>
+        <g transform="translate(-3.4,2.3)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#E44040"/></g>
+        <g transform="translate(-5.1,3.45)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#DB3D3D"/></g>
+        <g transform="translate(-6.8,4.6)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#D23A3A"/></g>
+        <g transform="translate(-8.5,5.75)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#C93737"/></g>
+        <g transform="translate(-10.2,6.9)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#C03434"/></g>
+      </svg>
+      <div class="glass-front"></div>
+      <svg class="overlay" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="ytBev" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="30%" stop-color="#fff" stop-opacity=".65"/>
+            <stop offset="65%" stop-color="#fff" stop-opacity=".05"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="ytFres" x1="100%" y1="100%" x2="25%" y2="25%">
+            <stop offset="0%" stop-color="#FCA5A5" stop-opacity=".85"/>
+            <stop offset="45%" stop-color="#FCA5A5" stop-opacity=".18"/>
+            <stop offset="100%" stop-color="#FCA5A5" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#ytBev)" stroke-width="3"/>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#ytFres)" stroke-width="2"/>
+        <rect x="34" y="34" width="152" height="152" rx="30" fill="none" stroke="#fff" stroke-width=".8" stroke-opacity=".35"/>
+        <rect x="56" y="82" width="108" height="76" rx="16" fill="#fff"/>
+        <polygon points="98,100 98,140 134,120" fill="#EF4444"/>
+      </svg>
+    </div>
+
+    <!-- GitLab glass badge -->
+    <div class="glass-badge" style="--x:760px; --y:15px; --s:1.25; --r:7deg; --fd:5.6s; --dl:.3s; --rgb:252,109,38;">
+      <svg class="depth" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(-1.7,1.15)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#FC6D26"/></g>
+        <g transform="translate(-3.4,2.3)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#EF6724"/></g>
+        <g transform="translate(-5.1,3.45)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#E56322"/></g>
+        <g transform="translate(-6.8,4.6)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#DA5E20"/></g>
+        <g transform="translate(-8.5,5.75)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#D0591F"/></g>
+        <g transform="translate(-10.2,6.9)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#C5541D"/></g>
+      </svg>
+      <div class="glass-front"></div>
+      <svg class="overlay" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="glBev" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="30%" stop-color="#fff" stop-opacity=".65"/>
+            <stop offset="65%" stop-color="#fff" stop-opacity=".05"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="glFres" x1="100%" y1="100%" x2="25%" y2="25%">
+            <stop offset="0%" stop-color="#FED7AA" stop-opacity=".85"/>
+            <stop offset="45%" stop-color="#FED7AA" stop-opacity=".18"/>
+            <stop offset="100%" stop-color="#FED7AA" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#glBev)" stroke-width="3"/>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#glFres)" stroke-width="2"/>
+        <rect x="34" y="34" width="152" height="152" rx="30" fill="none" stroke="#fff" stroke-width=".8" stroke-opacity=".35"/>
+        <path d="M 110 170 L 60 110 L 80 55 L 95 105 Z" fill="#fff"/>
+        <path d="M 110 170 L 160 110 L 140 55 L 125 105 Z" fill="#fff" opacity=".92"/>
+        <path d="M 110 170 L 95 105 L 125 105 Z" fill="#fff"/>
+        <path d="M 60 110 L 45 130 L 110 170 Z" fill="#fff" opacity=".78"/>
+        <path d="M 160 110 L 175 130 L 110 170 Z" fill="#fff" opacity=".78"/>
+      </svg>
+    </div>
+
+    <!-- Magnifier (between the two halves in DOM) -->
+    <div class="magnifier">
+      <svg viewBox="-25 -15 380 380" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="hnd" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0B2057"/>
+            <stop offset="100%" stop-color="#1E40AF"/>
+          </linearGradient>
+          <linearGradient id="hndSh" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fff" stop-opacity=".9"/>
+            <stop offset="50%" stop-color="#fff" stop-opacity=".35"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="rimChr" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fff"/>
+            <stop offset="40%" stop-color="#E5E7EB"/>
+            <stop offset="100%" stop-color="#64748B"/>
+          </linearGradient>
+        </defs>
+        <!-- Handle back shadow -->
+        <line x1="222" y1="198" x2="322" y2="298" stroke="#0B2057" stroke-width="32" stroke-linecap="round" opacity=".7"/>
+        <!-- Handle -->
+        <line x1="220" y1="196" x2="320" y2="296" stroke="url(#hnd)" stroke-width="28" stroke-linecap="round"/>
+        <!-- Handle specular -->
+        <line x1="216" y1="190" x2="316" y2="290" stroke="url(#hndSh)" stroke-width="6" stroke-linecap="round"/>
+        <!-- Rim -->
+        <circle cx="160" cy="140" r="74" fill="none" stroke="url(#rimChr)" stroke-width="16"/>
+        <!-- Outer rim shadow -->
+        <circle cx="160" cy="140" r="82" fill="none" stroke="#000" stroke-width="1" stroke-opacity=".3"/>
+        <!-- Inner rim bright edge -->
+        <circle cx="160" cy="140" r="66" fill="none" stroke="#fff" stroke-width="1.5" stroke-opacity=".55"/>
+      </svg>
+      <!-- Real glass lens with backdrop-filter -->
+      <div class="mag-lens"></div>
+    </div>
+
+    <!-- Lab glass badge (teal) -->
+    <div class="glass-badge" style="--x:1000px; --y:75px; --s:1.0; --r:-5deg; --fd:5.3s; --dl:.9s; --rgb:45,212,191;">
+      <svg class="depth" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(-1.7,1.15)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#2DD4BF"/></g>
+        <g transform="translate(-3.4,2.3)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#2ACBB7"/></g>
+        <g transform="translate(-5.1,3.45)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#28C3B1"/></g>
+        <g transform="translate(-6.8,4.6)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#25BCAA"/></g>
+        <g transform="translate(-8.5,5.75)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#23B4A4"/></g>
+        <g transform="translate(-10.2,6.9)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#20AD9D"/></g>
+      </svg>
+      <div class="glass-front"></div>
+      <svg class="overlay" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="labBev" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="30%" stop-color="#fff" stop-opacity=".65"/>
+            <stop offset="65%" stop-color="#fff" stop-opacity=".05"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="labFres" x1="100%" y1="100%" x2="25%" y2="25%">
+            <stop offset="0%" stop-color="#99F6E4" stop-opacity=".85"/>
+            <stop offset="45%" stop-color="#99F6E4" stop-opacity=".18"/>
+            <stop offset="100%" stop-color="#99F6E4" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#labBev)" stroke-width="3"/>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#labFres)" stroke-width="2"/>
+        <rect x="34" y="34" width="152" height="152" rx="30" fill="none" stroke="#fff" stroke-width=".8" stroke-opacity=".35"/>
+        <g fill="#fff">
+          <rect x="98" y="52" width="32" height="14" rx="7"/>
+          <rect x="107" y="64" width="14" height="10"/>
+          <rect x="86" y="72" width="56" height="42" rx="10"/>
+          <circle cx="76" cy="94" r="6"/>
+          <rect x="104" y="114" width="20" height="18" rx="3"/>
+          <path d="M 86 100 Q 68 110 68 156 L 78 156 Q 78 118 92 110 Z"/>
+          <rect x="66" y="142" width="94" height="8" rx="2"/>
+          <rect x="58" y="160" width="110" height="14" rx="7"/>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Confs glass badge (indigo) - NeurIPS / ICML / ICLR -->
+    <div class="glass-badge" style="--x:1210px; --y:50px; --s:1.1; --r:4deg; --fd:5.4s; --dl:1.5s; --rgb:99,102,241;">
+      <svg class="depth" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(-1.7,1.15)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#6366F1"/></g>
+        <g transform="translate(-3.4,2.3)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#5E60E6"/></g>
+        <g transform="translate(-5.1,3.45)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#5A5CDD"/></g>
+        <g transform="translate(-6.8,4.6)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#5657D4"/></g>
+        <g transform="translate(-8.5,5.75)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#5253CB"/></g>
+        <g transform="translate(-10.2,6.9)"><rect x="30" y="30" width="160" height="160" rx="34" fill="#4E4FC2"/></g>
+      </svg>
+      <div class="glass-front"></div>
+      <svg class="overlay" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="cfBev" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+            <stop offset="30%" stop-color="#fff" stop-opacity=".65"/>
+            <stop offset="65%" stop-color="#fff" stop-opacity=".05"/>
+            <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="cfFres" x1="100%" y1="100%" x2="25%" y2="25%">
+            <stop offset="0%" stop-color="#C7D2FE" stop-opacity=".85"/>
+            <stop offset="45%" stop-color="#C7D2FE" stop-opacity=".18"/>
+            <stop offset="100%" stop-color="#C7D2FE" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#cfBev)" stroke-width="3"/>
+        <rect x="30" y="30" width="160" height="160" rx="34" fill="none" stroke="url(#cfFres)" stroke-width="2"/>
+        <rect x="34" y="34" width="152" height="152" rx="30" fill="none" stroke="#fff" stroke-width=".8" stroke-opacity=".35"/>
+        <text x="110" y="92" text-anchor="middle" fill="#fff" font-family="Pretendard Variable, Pretendard, sans-serif" font-size="20" font-weight="900" letter-spacing="-0.4">NeurIPS</text>
+        <text x="110" y="120" text-anchor="middle" fill="#fff" font-family="Pretendard Variable, Pretendard, sans-serif" font-size="20" font-weight="900" letter-spacing="-0.4">ICML</text>
+        <text x="110" y="148" text-anchor="middle" fill="#fff" font-family="Pretendard Variable, Pretendard, sans-serif" font-size="20" font-weight="900" letter-spacing="-0.4">ICLR</text>
+      </svg>
+    </div>
+
+    <div class="iso-fade"></div>
+  </div>
+
+
+  <h1>숨겨진 인재를 찾아<br><span class="accent">직접 소싱하는 HR Agent</span></h1>
+  <p class="hero-sub">여전히 채용 플랫폼을 열고 닫으며 한정된 정보로 AI Native한 후보자를 찾고 계신가요<br>RecruitAgent는 채용 플랫폼 외 컨퍼런스, 논문, 오픈소스에서 숨겨진 인재를 발굴하고 개인화된 메시지로 직접 컨택합니다</p>
+  <div class="hero-ctas">
+    <a href="#" class="btn-primary">무료로 시작하기</a>
+    <a href="#" class="btn-secondary">데모 보기 &nbsp;→</a>
+  </div>
+</section>
+
+<!-- PAIN POINTS -->
+<section class="pain" id="pain">
+  <div class="pain-hire-stage reveal" aria-hidden="true">
+    <svg class="pain-hire-svg" viewBox="0 0 500 420" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="hireBody" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#7FB6FF"/>
+          <stop offset="45%" stop-color="#3B82F6"/>
+          <stop offset="100%" stop-color="#0B2057"/>
+        </linearGradient>
+        <linearGradient id="hireGloss" x1="50%" y1="0%" x2="50%" y2="100%">
+          <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".55"/>
+          <stop offset="40%" stop-color="#FFFFFF" stop-opacity=".10"/>
+          <stop offset="80%" stop-color="#FFFFFF" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="hireBevel" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".85"/>
+          <stop offset="40%" stop-color="#FFFFFF" stop-opacity=".25"/>
+          <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+        </linearGradient>
+        <radialGradient id="hireGlow" cx="250" cy="210" r="210" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#3B82F6" stop-opacity=".50"/>
+          <stop offset="35%" stop-color="#3B82F6" stop-opacity=".18"/>
+          <stop offset="65%" stop-color="#3B82F6" stop-opacity=".05"/>
+          <stop offset="90%" stop-color="#3B82F6" stop-opacity="0"/>
+          <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <circle cx="250" cy="210" r="210" fill="url(#hireGlow)"/>
+      <ellipse cx="250" cy="356" rx="170" ry="18" fill="#000" opacity=".35"/>
+      <g transform="translate(0,32.2)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#0B2057"/></g>
+      <g transform="translate(0,29.9)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#0D245D"/></g>
+      <g transform="translate(0,27.6)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#0E2762"/></g>
+      <g transform="translate(0,25.3)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#102B68"/></g>
+      <g transform="translate(0,23.0)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#122E6E"/></g>
+      <g transform="translate(0,20.7)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#143274"/></g>
+      <g transform="translate(0,18.4)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#153579"/></g>
+      <g transform="translate(0,16.1)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#17397F"/></g>
+      <g transform="translate(0,13.8)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#193C85"/></g>
+      <g transform="translate(0,11.5)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#1A408A"/></g>
+      <g transform="translate(0,9.2)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#1C4390"/></g>
+      <g transform="translate(0,6.9)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#1E4796"/></g>
+      <g transform="translate(0,4.6)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#204A9B"/></g>
+      <g transform="translate(0,2.3)"><rect x="90" y="100" width="320" height="220" rx="52" fill="#214EA1"/></g>
+      <rect x="90" y="100" width="320" height="220" rx="52" fill="url(#hireBody)"/>
+      <rect x="90" y="100" width="320" height="220" rx="52" fill="url(#hireGloss)"/>
+      <rect x="90" y="100" width="320" height="220" rx="52" fill="none" stroke="url(#hireBevel)" stroke-width="3.5"/>
+      <rect x="96" y="106" width="308" height="208" rx="46" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-opacity=".4"/>
+      <ellipse cx="160" cy="132" rx="56" ry="12" fill="#FFFFFF" opacity=".35"/>
+      <text x="250" y="242" font-family="'Pretendard Variable', Pretendard, sans-serif" font-size="100" font-weight="900" fill="#FFFFFF" text-anchor="middle" letter-spacing="-5">Hire</text>
+    </svg>
+  </div>
+  <div class="container">
+    <div class="pain-header reveal">
+      <h2>왜 적합한 인재를 못 찾을까요?</h2>
+    </div>
+    <div class="pain-grid">
+      <div class="pain-item reveal">
+        <div class="pain-num" style="color:var(--blue)">70%</div>
+        <div class="pain-title">인재풀의 70%는 공개 플랫폼 밖</div>
+        <div class="pain-desc">전체 AI Native 인재의 70%는 이직 의사가 없는 수동적 후보자(passive). 현 직장에 만족하거나 성장 중이기에 공고에 지원하지 않습니다.</div>
+      </div>
+      <div class="pain-item reveal" style="transition-delay:.67s">
+        <div class="pain-num" style="color:var(--blue)">2~5%</div>
+        <div class="pain-title">전문성 한계, 낮은 응답률</div>
+        <div class="pain-desc">AI Native 인재의 전문성 판별에는 깊은 기술 이해가 필요합니다. 기준 설정이 어려워 맥락 없는 대규모 콜드 아웃리치가 반복되고, 콜드 이메일 평균 응답률은 2~5%에 그칩니다.</div>
+      </div>
+      <div class="pain-item reveal" style="transition-delay:.79s">
+        <div class="pain-num" style="color:var(--blue)">주 15시간</div>
+        <div class="pain-title">소싱에 묶이는 시간</div>
+        <div class="pain-desc">HR/리크루터의 업무 플로우를 고려할 때, 소싱 영역은 1할 정도입니다. 중요도에 비해 소싱에는 주기적으로 리소스가 소비됩니다. 소싱을 사람이 직접하는 것은 낭비입니다.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUTION -->
+<section class="solution" id="solution">
+  <div class="container">
+    <div class="solution-header reveal">
+      <h2>RecruitAgent가 해결합니다</h2>
+      <p class="solution-sub">JD를 입력하면 AI가 웹 전체를 탐색합니다. 숨겨진 인재를 발굴하고 개인화된 메시지로 직접 컨택합니다.</p>
+    </div>
+    <div class="solution-grid reveal">
+      <!-- Shadow Sourcer (featured) -->
+      <div class="sol-card sol-featured">
+        <div class="sol-title">Shadow Sourcer</div>
+        <div class="sol-subtitle" style="color:var(--purple)">숨겨진 인재 발굴 — 채용 플랫폼 외 광범위한 서치</div>
+        <div class="sol-sources">
+          <span class="sol-source">컨퍼런스</span>
+          <span class="sol-source">GitHub</span>
+          <span class="sol-source">논문/특허</span>
+          <span class="sol-source">커뮤니티</span>
+          <span class="sol-source">밋업</span>
+        </div>
+        <div class="sol-desc">컨퍼런스 발표자, 논문 저자, 오픈소스 기여자, 특허 출원자 등 웹 전체가 탐색 대상입니다. AI가 흩어진 정보를 모아 후보자 프로필을 재구성합니다.</div>
+        <div class="mock-ui">
+          <div class="mock-row">
+            <div class="mock-avatar" style="background:linear-gradient(135deg,#60A5FA,#1E40AF)">KM</div>
+            <div class="mock-info">
+              <div class="mock-name">김민준</div>
+              <div class="mock-role">NLP Researcher · 카카오</div>
+              <div class="mock-signal">NeurIPS '24 · HuggingFace 12k★</div>
+            </div>
+            <div class="mock-badge">94%</div>
+          </div>
+          <div class="mock-row">
+            <div class="mock-avatar" style="background:linear-gradient(135deg,#A78BFA,#7C3AED)">SC</div>
+            <div class="mock-info">
+              <div class="mock-name">Sarah Chen</div>
+              <div class="mock-role">Computer Vision · 네이버</div>
+              <div class="mock-signal">GitHub 2.3k★ · CVPR '24 Author</div>
+            </div>
+            <div class="mock-badge">88%</div>
+          </div>
+          <div class="mock-row">
+            <div class="mock-avatar" style="background:linear-gradient(135deg,#34D399,#0F766E)">LJ</div>
+            <div class="mock-info">
+              <div class="mock-name">이진호</div>
+              <div class="mock-role">MLOps Engineer · 쿠팡</div>
+              <div class="mock-signal">ICML '24 Reviewer · 특허 5건</div>
+            </div>
+            <div class="mock-badge">82%</div>
+          </div>
+        </div>
+      </div>
+      <!-- Fit Analyzer -->
+      <div class="sol-card sol-side">
+        <div class="sol-title">Fit Analyzer</div>
+        <div class="sol-subtitle" style="color:var(--blue)">웹 공개 프로필 적합도 분석</div>
+        <div class="sol-desc">LinkedIn · GitHub · 논문 등 다양한 소스를 통합하여 JD 대비 적합도를 AI가 자동 스코어링합니다.</div>
+        <div class="sol-feats">
+          <div class="sol-feat" style="--dot:var(--blue)">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0"></span>멀티소스 통합
+          </div>
+          <div class="sol-feat">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0"></span>AI 스코어링
+          </div>
+          <div class="sol-feat">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0"></span>이직 가능성 예측
+          </div>
+        </div>
+      </div>
+      <!-- Outreach Agent -->
+      <div class="sol-card sol-side">
+        <div class="sol-title">Outreach Agent</div>
+        <div class="sol-subtitle" style="color:var(--teal)">자율 개인화 아웃리치</div>
+        <div class="sol-desc">후보자 발표·논문·프로젝트를 언급하는 1:1 맞춤 메시지 자동 생성. HR 승인 후 다채널 자동 발송.</div>
+        <div class="sol-feats">
+          <div class="sol-feat">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0"></span>개인화 메시지 생성
+          </div>
+          <div class="sol-feat">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0"></span>이메일 / LinkedIn 시퀀스
+          </div>
+          <div class="sol-feat">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0"></span>A/B 테스트 최적화
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WORKFLOW -->
+<section class="workflow" id="workflow">
+  <div class="container">
+    <div class="workflow-header reveal">
+      <h2>4단계로 채용까지</h2>
+    </div>
+    <div class="timeline reveal">
+      <div class="step">
+        <div class="step-bg-num">01</div>
+        <div class="step-node"></div>
+        <div class="step-title">JD 입력</div>
+        <div class="step-desc">직무 기술서와<br>이상적 후보자<br>프로필을 입력합니다.</div>
+      </div>
+      <div class="step">
+        <div class="step-bg-num">02</div>
+        <div class="step-node"></div>
+        <div class="step-title">AI 분석</div>
+        <div class="step-desc">AI가 웹 전체를<br>탐색하며 숨겨진<br>인재를 자동 발굴합니다.</div>
+      </div>
+      <div class="step">
+        <div class="step-bg-num">03</div>
+        <div class="step-node"></div>
+        <div class="step-title">검토 · 승인</div>
+        <div class="step-desc">후보자 프로필 카드 확인<br>HR 담당자가<br>아웃리치를 승인합니다.</div>
+      </div>
+      <div class="step">
+        <div class="step-bg-num">04</div>
+        <div class="step-node"></div>
+        <div class="step-title">자동 컨택</div>
+        <div class="step-desc">개인화 메시지 자동 발송<br>응답자를 면접<br>프로세스로 연결합니다.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="pricing-header reveal">
+      <h2>헤드헌터 1건 비용으로 3~6개월 이용</h2>
+    </div>
+    <p class="pricing-sub reveal">헤드헌터 성사 수수료(1,000~1,500만원) 대비, Starter 플랜은 월 29만원으로 비용 절감</p>
+    <div class="pricing-grid">
+      <div class="plan reveal">
+        <div class="plan-name">Starter</div>
+        <div class="plan-target">스타트업 · 소규모 HR팀</div>
+        <div class="plan-divider"></div>
+        <div class="plan-price">29만원</div>
+        <div class="plan-unit">/ user / 월</div>
+        <div class="plan-feats">
+          <div class="plan-feat"><span class="plan-check">✓</span> Fit Analyzer 무제한</div>
+          <div class="plan-feat"><span class="plan-check">✓</span> Shadow Sourcer 50건/월</div>
+          <div class="plan-feat"><span class="plan-check">✓</span> 아웃리치 100건/월</div>
+        </div>
+      </div>
+      <div class="plan plan-featured reveal" style="transition-delay:.12s">
+        <div class="plan-rec">추천</div>
+        <div class="plan-name">Professional</div>
+        <div class="plan-target">중견기업 HR팀</div>
+        <div class="plan-divider"></div>
+        <div class="plan-price">59만원</div>
+        <div class="plan-unit">/ user / 월</div>
+        <div class="plan-feats">
+          <div class="plan-feat"><span class="plan-check">✓</span> Shadow Sourcer 200건/월</div>
+          <div class="plan-feat"><span class="plan-check">✓</span> 아웃리치 500건/월</div>
+          <div class="plan-feat"><span class="plan-check">✓</span> A/B 테스트 + 분석 대시보드</div>
+        </div>
+      </div>
+      <div class="plan reveal" style="transition-delay:.24s">
+        <div class="plan-name">Enterprise</div>
+        <div class="plan-target">대기업 · 채용 대행사</div>
+        <div class="plan-divider"></div>
+        <div class="plan-price">협의</div>
+        <div class="plan-unit">&nbsp;</div>
+        <div class="plan-feats">
+          <div class="plan-feat"><span class="plan-check">✓</span> 무제한 소싱</div>
+          <div class="plan-feat"><span class="plan-check">✓</span> 전용 소스 커스터마이징</div>
+          <div class="plan-feat"><span class="plan-check">✓</span> API 연동 + 전담 CSM</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="container">
+    <h2 class="reveal">지금 바로 시작하세요</h2>
+    <p class="reveal">헤드헌터 없이도, 적합한 인재를 AI가 찾아드립니다.</p>
+    <a href="#" class="btn-white reveal">무료로 시작하기</a>
+  </div>
+</section>
+
+<script>
+// Default reveal: triggers as element enters viewport
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
+
+// Pain section: use header as trigger — when header enters, reveal h2 + Hire + cards together (with CSS staggered transition-delays)
+const painSelectors = '.pain-header.reveal, .pain-hire-stage.reveal, .pain-item.reveal';
+const painElements = Array.from(document.querySelectorAll(painSelectors));
+const painTrigger = document.querySelector('.pain-header.reveal');
+if (painTrigger) {
+  const painObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        painElements.forEach(el => el.classList.add('visible'));
+        painObserver.disconnect();
+      }
+    });
+  }, { threshold: 0.25, rootMargin: '0px 0px -35% 0px' });
+  painObserver.observe(painTrigger);
+}
+
+// Everything else uses default observer
+const painSet = new Set(painElements);
+document.querySelectorAll('.reveal').forEach(el => {
+  if (!painSet.has(el)) observer.observe(el);
+});
+</script>
+</body>
+</html>

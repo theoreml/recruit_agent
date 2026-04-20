@@ -1,0 +1,15 @@
+{
+  "name": "recruit-agent",
+  "version": "1.0.0",
+  "description": "RecruitAgent — 숨겨진 인재를 찾아 직접 소싱하는 HR Agent",
+  "private": true,
+  "scripts": {
+    "start": "serve -s . -l ${PORT:-3000} --no-clipboard"
+  },
+  "dependencies": {
+    "serve": "^14.2.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
